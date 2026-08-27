@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="sl">
+  <head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kärcher InfoBoard</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              karcher: {
+                yellow: '#FFED00',
+                black: '#000000',
+                white: '#FFFFFF',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    
+    <style>
+      .Menu {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        line-height: 1;
+        cursor: pointer;
+        background-color: transparent;
+        transition: color 350ms ease-in-out;
+      }
+      .Menu:hover { color: gray; }
+
+      .Update_Status {
+        padding: 8px 16px;
+        background-color: #f5f5f5;
+        border: none;
+        border-radius: 12px;
+        font-weight: bold;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        white-space: nowrap;
+      }
+      .Update_Status:hover {
+        background-color: #000000;
+        color: #FFED00;
+      }
+
+      .MainField {
+        flex-grow: 1;
+        height: 100%;
+        background-color: #ffffff;
+        display: flex;
+        flex-direction: column; 
+        align-items: center;
+        justify-content: flex-start; 
+        padding: 24px;
+        overflow-y: auto;
+      }
+
+      .DataDash-board {
+        width: 100%;
+        max-width: 2200px;
+        height: 100%;
+        background-color: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        display: block;
+        margin: 0 auto;
+        padding: 24px;
+        overflow-y: auto; 
+        position: relative;
+      }
+
+      header { position: relative; }
+
+      .Nav-overlay {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 40;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 300ms ease;
+      }
+      .Nav-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .Nav {
+        background-color: #ffffff; 
+        margin-left: -200px;
+        width: 200px;
+        height: 100%;
+        z-index: 50;
+        transition: margin-left 300ms ease, left 300ms ease;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      .Nav.open { 
+        margin-left: 0; 
+      }
+
+      .Nav-item {
+        border: none;
+        padding: 15px 20px;
+        text-align: left;
+        font-size: 18px;
+        font-weight: bold;
+        display: block;
+        transition: background-color 0.3s ease, border-left 0.1s ease;
+        border-left: 5px solid transparent;
+        cursor: pointer;
+      }
+      .Nav-item:hover {
+        background-color: #72727248;
+        border-left: 5px solid #000000;
+      }
+
+      /* Excel Table Styling */
+      .excel-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      .excel-table th {
+        background-color: #c3c3c3;
+        color: #000000;
+        padding: 10px 14px;
+        text-align: left;
+        font-weight: 800;
+        text-transform: uppercase;
+        font-size: 12px;
+        letter-spacing: 0.05em;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+      .excel-table td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #e5e7eb;
+        color: #000000;
+        font-weight: 600;
+        font-size: 14px;
+      }
+      .excel-table tr:hover {
+        background-color: #f3f4f6;
+      }
+
+      /* OPTIMIZACIJA ZA MOBILNE NAPRAVE */
+      @media (max-width: 768px) {
+        .MainField { padding: 12px !important; }
+        .DataDash-board { padding: 14px !important; border-radius: 12px !important; }
+
+        .Menu { 
+          width: 38px !important; 
+          height: 38px !important; 
+          font-size: 22px !important; 
+        }
+
+        .Update_Status { 
+          padding: 6px 8px !important; 
+          font-size: 10px !important; 
+          border-radius: 8px !important;
+          white-space: nowrap !important;
+        }
+
+        #btn-layout-toggle {
+          font-size: 11px !important;
+          padding: 4px 6px !important;
+        }
+
+        .Nav { 
+          position: fixed !important; 
+          top: 0 !important; 
+          bottom: 0 !important; 
+          left: -260px !important; 
+          width: 260px !important; 
+          margin-left: 0 !important; 
+          box-shadow: 4px 0 20px rgba(0,0,0,0.25) !important; 
+        }
+        .Nav.open { left: 0 !important; }
+        .Nav-item { padding: 18px 20px !important; font-size: 18px !important; }
+      }
+    </style>
+  </head>
+  <body class="bg-karcher-yellow text-karcher-black h-screen flex flex-col overflow-hidden">
+
+    <!-- ZGORNJA VRSTICA -->
+    <header class="p-2 md:p-4 flex items-center justify-between bg-karcher-yellow z-20 flex-shrink-0 gap-1 md:gap-4">
+      <div class="flex justify-start items-center gap-1 md:gap-3 flex-shrink-0">
+        <button class="Menu" id="menu-toggle-btn">☰</button>
+        <button id="btn-layout-toggle" onclick="preklopiLayout()" class="p-1.5 md:p-2 text-xs md:text-sm bg-transparent text-karcher-black font-black rounded-xl hover:bg-black hover:text-karcher-yellow transition-all flex items-center justify-center leading-none active:scale-95" title="Preklopi pogled (Kartice / Tabela)">
+          ⊞ 🔴
+        </button>
+      </div>
+      
+      <div class="flex-grow flex justify-center items-center px-1">
+          <img src="https://lh3.googleusercontent.com/d/YOUR_IMAGE_ID" 
+              alt="Kärcher Logo" 
+              class="h-[35px] sm:h-[45px] md:h-[55px] w-auto object-contain max-w-full">
+      </div>
+
+      <div class="flex justify-end items-center flex-shrink-0">
+        <button class="Update_Status" id="btn-status" onclick="naloziZadnjiStatus()">
+          Status: Nalagam...
+        </button>
+      </div>
+    </header>
+    
+    <div class="flex-grow flex flex-row overflow-hidden relative">
+      <div class="Nav-overlay" id="nav-overlay"></div>
+
+      <!-- MENI -->
+      <div class="Nav" id="sidebar-nav">
+        <button class="Nav-item" id="nav-narocila">Home</button>
+        <button class="Nav-item" id="nav-zaloga">Zaloga</button>
+        <button class="Nav-item" id="nav-kupci">Kupci</button>
+        <button class="Nav-item" id="nav-cenik">Cenik</button>
+      </div>
+      
+      <main class="MainField">
+        
+        <!-- ORODNA VRSTICA (Zaloga, Kupci in Cenik) -->
+        <div class="w-full max-w-[2200px] mb-4 flex flex-col md:flex-row gap-3 md:gap-4 justify-between items-center bg-gray-100 p-3 md:p-4 rounded-xl shadow-md hidden" id="orodna-vrstica">
+            <div class="w-full md:flex-grow" id="search-container">
+                <input type="text" id="searchInput" placeholder='Išči po imenu, šifri ali lokaciji...' 
+                       class="w-full bg-white text-karcher-black placeholder-gray-500 font-bold text-sm md:text-lg py-2.5 px-4 md:py-3 md:px-6 rounded-xl border-2 border-transparent focus:border-karcher-yellow focus:outline-none transition-all">
+            </div>
+            <div class="w-full md:w-1/4" id="location-container">
+                <select id="locationFilter" class="w-full bg-white text-karcher-black font-bold text-sm md:text-lg py-2.5 px-4 md:py-3 md:px-6 rounded-xl border-2 border-transparent focus:border-karcher-yellow focus:outline-none cursor-pointer transition-all">
+                    <option value="" disabled selected>-- Izberi lokacijo za prikaz --</option>
+                    <option value="ALL">Vse lokacije</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="DataDash-board" id="dashboard-vsebina">
+            <!-- Dinamična vsebina -->
+        </div>
+      </main>
+
+    </div>
+    
+    <script>
+      const menuButton = document.getElementById('menu-toggle-btn');
+      const sidebar = document.getElementById('sidebar-nav');
+      const overlay = document.getElementById('nav-overlay');
+      
+      let trenutniModul = ''; 
+      let vsiPodatkiZaloga = []; 
+      let vsiKupci = [];
+      let vsiCenik = [];
+      let cenikMap = {}; 
+
+      let trenutnaNarocilaPoStavkah = []; 
+      let trenutnoImeKupca = '';
+      let trenutnaSifraKupca = '';
+      let trenutnoPoNumber = '';
+      let debounceTimer; 
+
+      // ===== PRIVZETO SINKRONIZIRAN 'GRID' POGLED =====
+      let layoutMode = 'GRID'; 
+
+      function preklopiLayout() {
+        layoutMode = layoutMode === 'GRID' ? 'TABLE' : 'GRID';
+        
+        const mainBtn = document.getElementById('btn-layout-toggle');
+        if (mainBtn) mainBtn.innerHTML = layoutMode === 'GRID' ? '⊞ 🔴' : '⊞ 🟢';
+
+        if (document.getElementById('artikli-grid-container')) {
+          filtrirajArtikleZnotrajNarocila();
+        } else if (document.getElementById('narocila-grid-container')) {
+          filtrirajInRenderNarocila();
+        } else if (trenutniModul === 'ZALOGA' || trenutniModul === 'KUPCI' || trenutniModul === 'CENIK') {
+          uporabiFiltre();
+        }
+      }
+
+      window.kesiranaNarocilaKupcev = {};
+
+      function odpriZapriMeni() {
+        sidebar.classList.toggle("open");
+        overlay.classList.toggle("open");
+      }
+
+      function zapriMeni() {
+        sidebar.classList.remove("open");
+        overlay.classList.remove("open");
+      }
+
+      menuButton.addEventListener('click', odpriZapriMeni);
+      overlay.addEventListener('click', zapriMeni);
+
+      document.addEventListener('DOMContentLoaded', () => {
+        prikaziZacetniPozdrav();
+        naloziZadnjiStatus();
+        naloziCenikMap();
+      });
+
+      function naloziZadnjiStatus() {
+        const statusBtn = document.getElementById('btn-status');
+        statusBtn.textContent = 'Status: Nalagam...';
+
+        if (typeof google !== 'undefined' && google.script) {
+            google.script.run
+                .withSuccessHandler(function(cas) {
+                    statusBtn.textContent = 'Podatki osveženi: ' + cas;
+                })
+                .pridobiZadnjiStatus();
+        } else {
+            statusBtn.textContent = 'Status: Demo';
+        }
+      }
+
+      function naloziCenikMap() {
+        if (typeof google !== 'undefined' && google.script) {
+          google.script.run.withSuccessHandler(function(map) {
+            cenikMap = map || {};
+          }).pridobiVseCeneMap();
+        }
+      }
+
+      function pridobiCeneObjekt(sifra) {
+        if (!sifra) return { vpc: '/', mpc: '/', mpc_ddv: '/' };
+        
+        let cista = String(sifra).toLowerCase().replace(/[\.\-\s]/g, '');
+        let podatek = cenikMap[cista];
+        
+        if (podatek) {
+          function formatirajCeno(val) {
+            if (val === null || val === undefined || val === '') return '/';
+            if (typeof val === 'string') {
+              if (val.trim() === '') return '/';
+              if (val.indexOf('€') !== -1) return val.trim();
+            }
+            var num = Number(val);
+            return !isNaN(num) ? '€ ' + num.toFixed(2) : String(val);
+          }
+
+          return {
+            vpc: formatirajCeno(podatek.vpc),
+            mpc: formatirajCeno(podatek.mpc),
+            mpc_ddv: formatirajCeno(podatek.mpc_ddv)
+          };
+        }
+        
+        return { vpc: '/', mpc: '/', mpc_ddv: '/' };
+      }
+
+      function prikaziZacetniPozdrav() {
+        trenutniModul = 'HOME';
+        document.getElementById('orodna-vrstica').classList.add('hidden');
+        const vsebina = document.getElementById('dashboard-vsebina');
+        vsebina.innerHTML = `
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center text-center w-full max-w-4xl px-4 md:px-6">
+                <h1 class="text-3xl sm:text-4xl md:text-5xl font-black text-karcher-black mb-3">Home</h1>
+                <p class="text-base sm:text-lg md:text-xl text-gray-500 font-bold mb-6 md:mb-10">Dobrodošli v InfoBoard sistemu. Izberite modul za nadaljevanje:</p>
+
+                <div class="flex flex-wrap justify-center gap-4 md:gap-8 w-full">
+                    <button onclick="naloziKupce()" 
+                            class="w-full sm:w-[calc(50%-1rem)] max-w-[430px] bg-gray-100 hover:bg-black text-karcher-black hover:text-karcher-yellow p-6 md:p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all border-l-8 border-black flex flex-col justify-between text-left group transform hover:-translate-y-1">
+                        <div>
+                            <div class="w-10 h-10 md:w-12 md:h-12 bg-karcher-yellow group-hover:bg-white text-black rounded-xl flex items-center justify-center font-black text-xl md:text-2xl mb-3 md:mb-4 shadow-sm">
+                                👥
+                            </div>
+                            <h3 class="text-xl md:text-3xl font-black mb-1 md:mb-2">Kupci</h3>
+                            <p class="text-xs md:text-sm font-semibold opacity-75 leading-relaxed">Iskanje podjetij in pregled vseh njihovih naročil.</p>
+                        </div>
+                        <div class="mt-4 md:mt-6 flex justify-end items-center font-bold text-sm md:text-base uppercase tracking-wider">
+                            Odpri kupce <span class="ml-2 text-lg md:text-xl group-hover:translate-x-2 transition-transform">➔</span>
+                        </div>
+                    </button>
+
+                    <button onclick="naloziZalogo()" 
+                            class="w-full sm:w-[calc(50%-1rem)] max-w-[430px] bg-gray-100 hover:bg-black text-karcher-black hover:text-karcher-yellow p-6 md:p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all border-l-8 border-karcher-yellow flex flex-col justify-between text-left group transform hover:-translate-y-1">
+                        <div>
+                            <div class="w-10 h-10 md:w-12 md:h-12 bg-karcher-yellow group-hover:bg-white text-black rounded-xl flex items-center justify-center font-black text-xl md:text-2xl mb-3 md:mb-4 shadow-sm">
+                                📦
+                            </div>
+                            <h3 class="text-xl md:text-3xl font-black mb-1 md:mb-2">Zaloga</h3>
+                            <p class="text-xs md:text-sm font-semibold opacity-75 leading-relaxed">Pregled stanja artiklov po šifrah, opisu in lokacijah.</p>
+                        </div>
+                        <div class="mt-4 md:mt-6 flex justify-end items-center font-bold text-sm md:text-base uppercase tracking-wider">
+                            Odpri zalogo <span class="ml-2 text-lg md:text-xl group-hover:translate-x-2 transition-transform">➔</span>
+                        </div>
+                    </button>
+
+                    <button onclick="naloziCenik()" 
+                            class="w-full sm:w-[calc(50%-1rem)] max-w-[430px] bg-gray-100 hover:bg-black text-karcher-black hover:text-karcher-yellow p-6 md:p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all border-l-8 border-black flex flex-col justify-between text-left group transform hover:-translate-y-1">
+                        <div>
+                            <div class="w-10 h-10 md:w-12 md:h-12 bg-karcher-yellow group-hover:bg-white text-black rounded-xl flex items-center justify-center font-black text-xl md:text-2xl mb-3 md:mb-4 shadow-sm">
+                                🏷️
+                            </div>
+                            <h3 class="text-xl md:text-3xl font-black mb-1 md:mb-2">Cenik</h3>
+                            <p class="text-xs md:text-sm font-semibold opacity-75 leading-relaxed">Pregled cenikov, VPC, MPC, MPC+DDV in EAN kod.</p>
+                        </div>
+                        <div class="mt-4 md:mt-6 flex justify-end items-center font-bold text-sm md:text-base uppercase tracking-wider">
+                            Odpri cenik <span class="ml-2 text-lg md:text-xl group-hover:translate-x-2 transition-transform">➔</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        `;
+      }
+
+      document.getElementById('nav-zaloga').addEventListener('click', () => { zapriMeni(); naloziZalogo(); });
+      document.getElementById('nav-kupci').addEventListener('click', () => { zapriMeni(); naloziKupce(); });
+      document.getElementById('nav-cenik').addEventListener('click', () => { zapriMeni(); naloziCenik(); });
+      document.getElementById('nav-narocila').addEventListener('click', () => { zapriMeni(); prikaziZacetniPozdrav(); });
+
+      function naloziZalogo() {
+        trenutniModul = 'ZALOGA';
+        document.getElementById('orodna-vrstica').classList.add('hidden');
+        document.getElementById('location-container').classList.remove('hidden'); 
+        document.getElementById('searchInput').placeholder = 'Išči po imenu, šifri (1.###-###.#) ali lokaciji...';
+        
+        if (vsiPodatkiZaloga.length > 0) {
+            document.getElementById('orodna-vrstica').classList.remove('hidden');
+            document.getElementById('searchInput').value = ""; 
+            prikaziZacetnoSporociloZaloga();
+            return;
+        }
+
+        const vsebina = document.getElementById('dashboard-vsebina');
+        vsebina.innerHTML = `
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                <div class="h-10 w-10 md:h-12 md:w-12 bg-karcher-yellow rounded-full mb-3 animate-bounce"></div>
+                <p class="text-lg md:text-2xl font-bold opacity-75">Nalagam podatke o zalogi...</p>
+            </div>
+        `;
+
+        if (typeof google !== 'undefined' && google.script) {
+            google.script.run.withSuccessHandler(inicializirajZalogo).pridobiPodatkeZaDashboard();
+        }
+      }
+
+      function inicializirajZalogo(podatki) {
+        vsiPodatkiZaloga = podatki.map(z => {
+            let opis = z['Material Description'] || 'Brez opisa';
+            let lokacija = z['Descr. of Storage Loc.'] || z['Descr. of Storage Loc'] || z['Storage Location'] || '/';
+            let materialKoda = z['Material'] || '/';
+            let zaloga = z['Unrestricted'] || '0';
+
+            let polniIndex = (String(opis) + ' ' + String(materialKoda) + ' ' + String(lokacija)).toLowerCase();
+            let cistiIndex = polniIndex.replace(/[\.\-\s]/g, '');
+
+            return {
+                opis: opis, 
+                lokacija: lokacija, 
+                koda: materialKoda, 
+                zaloga: zaloga,
+                searchIndex: polniIndex,
+                cleanSearchIndex: cistiIndex
+            };
+        });
+
+        if (vsiPodatkiZaloga.length > 0) {
+            document.getElementById('orodna-vrstica').classList.remove('hidden'); 
+            const filter = document.getElementById('locationFilter');
+            filter.innerHTML = `<option value="" disabled selected>-- Izberi lokacijo za prikaz --</option><option value="ALL">Vse lokacije</option>`;
+            napolniFilterLokacij(); 
+            document.getElementById('searchInput').value = ""; 
+        }
+        
+        prikaziZacetnoSporociloZaloga();
+      }
+
+      function prikaziZacetnoSporociloZaloga() {
+        const vsebina = document.getElementById('dashboard-vsebina');
+        vsebina.innerHTML = `
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center text-gray-400 text-center w-full px-4">
+                <svg class="w-16 h-16 md:w-24 md:h-24 mb-4 md:mb-6 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <p class="text-lg md:text-2xl font-bold">Za prikaz artiklov vpišite ime, šifro ali izberite lokacijo.</p>
+            </div>
+        `;
+      }
+
+      function napolniFilterLokacij() {
+        const filter = document.getElementById('locationFilter');
+        const vseLokacije = vsiPodatkiZaloga.map(p => p.lokacija).filter(l => l && l !== '/');
+        const unikatneLokacije = [...new Set(vseLokacije)].sort();
+        unikatneLokacije.forEach(lokacija => {
+            const opcija = document.createElement('option');
+            opcija.value = lokacija; opcija.textContent = lokacija;
+            filter.appendChild(opcija);
+        });
+      }
+
+      /* -----------------------------------------------------
+         MODUL CENIK
+      ------------------------------------------------------- */
+      function naloziCenik() {
+        trenutniModul = 'CENIK';
+        document.getElementById('orodna-vrstica').classList.remove('hidden');
+        document.getElementById('location-container').classList.add('hidden'); 
+        document.getElementById('searchInput').placeholder = "Išči po imenu, šifri ali EAN kodi...";
+
+        if (vsiCenik.length > 0) {
+            document.getElementById('searchInput').value = ""; 
+            prikaziZacetnoSporociloCenik();
+            return;
+        }
+
+        const vsebina = document.getElementById('dashboard-vsebina');
+        vsebina.innerHTML = `
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                <div class="h-10 w-10 md:h-12 md:w-12 bg-karcher-yellow rounded-full mb-3 animate-bounce"></div>
+                <p class="text-lg md:text-2xl font-bold opacity-75">Nalagam cenik...</p>
+            </div>
+        `;
+
+        if (typeof google !== 'undefined' && google.script) {
+            google.script.run.withSuccessHandler(inicializirajCenik).pridobiPodatkeZaCenik();
+        }
+      }
+
+      function inicializirajCenik(podatki) {
+        vsiCenik = (podatki || []).map(c => {
+            let artikel = c['Artikel'] || c['Šifra'] || '/';
+            let model = c['Model'] || c['Naziv'] || 'Brez opisa';
+            let ean = c['EAN'] || '/';
+            let vpc = c['VPC'] !== '' && c['VPC'] !== null ? c['VPC'] : '/';
+            let mpc = c['PMPC'] !== '' && c['PMPC'] !== null ? c['PMPC'] : '/';
+            let mpc_ddv = c['PMPC_DDV'] !== '' && c['PMPC_DDV'] !== null ? c['PMPC_DDV'] : '/';
+
+            let polniIndex = (String(artikel) + ' ' + String(model) + ' ' + String(ean)).toLowerCase();
+            let cistiIndex = polniIndex.replace(/[\.\-\s]/g, '');
+
+            return {
+                artikel: artikel,
+                model: model,
+                ean: ean,
+                vpc: vpc,
+                mpc: mpc,
+                mpc_ddv: mpc_ddv,
+                searchIndex: polniIndex,
+                cleanSearchIndex: cistiIndex
+            };
+        });
+
+        if (vsiCenik.length > 0) {
+            document.getElementById('orodna-vrstica').classList.remove('hidden');
+            document.getElementById('searchInput').value = ""; 
+        }
+        
+        prikaziZacetnoSporociloCenik();
+      }
+
+      function prikaziZacetnoSporociloCenik() {
+        const vsebina = document.getElementById('dashboard-vsebina');
+        vsebina.innerHTML = `
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center text-gray-400 text-center w-full px-4">
+                <svg class="w-16 h-16 md:w-24 md:h-24 mb-4 md:mb-6 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <p class="text-lg md:text-2xl font-bold">Za prikaz vnesite ime artikla, šifro ali EAN kodo.</p>
+            </div>
+        `;
+      }
+
+      function formatirajDatum(d) {
+        if (!d || d === '/' || d === '1970-01-01') return '/';
+        
+        if (typeof d === 'string' && d.indexOf('-') !== -1) {
+          var deli = d.trim().split('T')[0].split('-');
+          if (deli.length === 3) {
+            return deli[2] + '.' + deli[1] + '.' + deli[0];
+          }
+        }
+        return d;
+      }
+
+      function naloziKupce() {
+        trenutniModul = 'KUPCI';
+        document.getElementById('orodna-vrstica').classList.add('hidden');
+        document.getElementById('location-container').classList.add('hidden'); 
+        document.getElementById('searchInput').placeholder = "Vpišite ime podjetja ali šifro kupca...";
+
+        if (vsiKupci.length > 0) {
+            document.getElementById('orodna-vrstica').classList.remove('hidden');
+            document.getElementById('searchInput').value = ""; 
+            prikaziZacetnoSporociloKupci();
+            return;
+        }
+
+        const vsebina = document.getElementById('dashboard-vsebina');
+        vsebina.innerHTML = `
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                <div class="h-10 w-10 md:h-12 md:w-12 bg-karcher-yellow rounded-full mb-3 animate-bounce"></div>
+                <p class="text-lg md:text-2xl font-bold opacity-75">Nalagam bazo kupcev...</p>
+            </div>
+        `;
+
+        if (typeof google !== 'undefined' && google.script) {
+            google.script.run.withSuccessHandler(inicializirajKupce).pridobiPodatkeZaKupce();
+        }
+      }
+
+      function inicializirajKupce(podatki) {
+        vsiKupci = podatki.map(k => {
+            let ime = k['Ime podjetje'] || k['Ime podjetja'] || k['Name 1'] || k['Podjetje'] || k['GR-NAME'] || 'Neznano podjetje';
+            let sifra = k['Šifra podjetje'] || k['Šifra podjetja'] || k['Customer'] || k['Šifra'] || k['WW CUSTOMER'] || 'Brez šifre';
+            return {
+                ime: ime,
+                sifra: sifra,
+                searchIndex: (String(ime) + ' ' + String(sifra)).toLowerCase() 
+            };
+        });
+
+        if (vsiKupci.length > 0) {
+            document.getElementById('orodna-vrstica').classList.remove('hidden');
+            document.getElementById('searchInput').value = ""; 
+        }
+        
+        prikaziZacetnoSporociloKupci();
+      }
+
+      function prikaziZacetnoSporociloKupci() {
+        const vsebina = document.getElementById('dashboard-vsebina');
+        vsebina.innerHTML = `
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center text-gray-400 text-center w-full px-4">
+                <svg class="w-16 h-16 md:w-24 md:h-24 mb-4 md:mb-6 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <p class="text-lg md:text-2xl font-bold">Za začetek iskanja vpišite ime podjetja ali šifro kupca.</p>
+            </div>
+        `;
+      }
+
+      document.getElementById('searchInput').addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(uporabiFiltre, 250); 
+      });
+
+      document.getElementById('locationFilter').addEventListener('change', uporabiFiltre);
+
+      function uporabiFiltre() {
+        const vnesenNiz = document.getElementById('searchInput').value.trim().toLowerCase();
+
+        if (trenutniModul === 'ZALOGA') {
+            const izbranaLokacija = document.getElementById('locationFilter').value;
+
+            if (vnesenNiz === "" && izbranaLokacija === "") {
+                prikaziZacetnoSporociloZaloga();
+                return;
+            }
+
+            const cistiVnesenNiz = vnesenNiz.replace(/[\.\-\s]/g, '');
+
+            const filtriraniPodatki = vsiPodatkiZaloga.filter(item => {
+                let ustrezaIskanju = vnesenNiz === "" || 
+                                     item.searchIndex.includes(vnesenNiz) || 
+                                     (item.cleanSearchIndex && item.cleanSearchIndex.includes(cistiVnesenNiz));
+
+                let ustrezaLokaciji = (izbranaLokacija === "" || izbranaLokacija === 'ALL') || (item.lokacija === izbranaLokacija);
+                return ustrezaIskanju && ustrezaLokaciji;
+            });
+            
+            zgradiDashboardZaloga(filtriraniPodatki, filtriraniPodatki.length);
+
+        } else if (trenutniModul === 'KUPCI') {
+            if (vnesenNiz === "") {
+                prikaziZacetnoSporociloKupci();
+                return;
+            }
+
+            const cistiVnesenNiz = vnesenNiz.replace(/[\.\-\s]/g, '');
+            const filtriraniPodatki = vsiKupci.filter(k => {
+                let cistiKupacIndex = k.searchIndex.replace(/[\.\-\s]/g, '');
+                return k.searchIndex.includes(vnesenNiz) || cistiKupacIndex.includes(cistiVnesenNiz);
+            });
+            zgradiDashboardKupcev(filtriraniPodatki, filtriraniPodatki.length);
+
+        } else if (trenutniModul === 'CENIK') {
+            if (vnesenNiz === "") {
+                prikaziZacetnoSporociloCenik();
+                return;
+            }
+
+            const cistiVnesenNiz = vnesenNiz.replace(/[\.\-\s]/g, '');
+            const filtriraniPodatki = vsiCenik.filter(c => {
+                return c.searchIndex.includes(vnesenNiz) || (c.cleanSearchIndex && c.cleanSearchIndex.includes(cistiVnesenNiz));
+            });
+            zgradiDashboardCenik(filtriraniPodatki, filtriraniPodatki.length);
+        }
+      }
+
+      function zgradiDashboardZaloga(podatki, skupnoStevilo) {
+        const vsebina = document.getElementById('dashboard-vsebina');
+        if (podatki.length === 0) { vsebina.innerHTML = '<p class="text-lg md:text-xl font-bold mt-10 text-center">Ni najdenih artiklov.</p>'; return; }
+
+        let htmlStruktura = '';
+
+        if (layoutMode === 'TABLE') {
+          htmlStruktura += `
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+              <table class="excel-table">
+                <thead>
+                  <tr>
+                    <th>Naziv artikla</th>
+                    <th>Šifra</th>
+                    <th>Lokacija</th>
+                    <th>VPC</th>
+                    <th>MPC</th>
+                    <th>MPC+DDV</th>
+                    <th class="text-right">Zaloga</th>
+                  </tr>
+                </thead>
+                <tbody>
+          `;
+          podatki.forEach(item => {
+            let cene = pridobiCeneObjekt(item.koda);
+            htmlStruktura += `
+              <tr>
+                <td class="font-bold">${item.opis}</td>
+                <td class="font-mono text-xs">${item.koda}</td>
+                <td>${item.lokacija}</td>
+                <td class="font-mono text-xs text-gray-700">${cene.vpc}</td>
+                <td class="font-mono text-xs text-gray-700">${cene.mpc}</td>
+                <td class="font-mono text-xs font-bold text-black">${cene.mpc_ddv}</td>
+                <td class="text-right"><span class="bg-karcher-yellow text-black font-black px-2 py-0.5 rounded">${item.zaloga}</span></td>
+              </tr>
+            `;
+          });
+          htmlStruktura += '</tbody></table></div>';
+        } else {
+          htmlStruktura += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 w-full content-start">';
+          podatki.forEach(item => {
+              let cene = pridobiCeneObjekt(item.koda);
+
+              htmlStruktura += `
+                  <div class="bg-gray-100 p-5 md:p-6 rounded-2xl shadow-md border-l-8 border-karcher-yellow hover:shadow-xl transition-shadow flex flex-col justify-between">
+                      <div class="mb-3">
+                          <h3 class="text-base md:text-xl font-black mb-1 text-karcher-black line-clamp-2 leading-tight" title="${item.opis}">${item.opis}</h3>
+                          <p class="text-xs text-gray-500 font-mono">Šifra: ${item.koda}</p>
+                      </div>
+
+                      <div class="bg-white p-3 rounded-xl border border-gray-200 mb-4 grid grid-cols-3 gap-2 text-center">
+                          <div>
+                              <p class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">VPC</p>
+                              <p class="text-xs md:text-sm font-black text-gray-800">${cene.vpc}</p>
+                          </div>
+                          <div class="border-x border-gray-200">
+                              <p class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">MPC</p>
+                              <p class="text-xs md:text-sm font-black text-gray-800">${cene.mpc}</p>
+                          </div>
+                          <div>
+                              <p class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">MPC+DDV</p>
+                              <p class="text-xs md:text-sm font-black text-black">${cene.mpc_ddv}</p>
+                          </div>
+                      </div>
+
+                      <div class="mt-auto pt-3 border-t border-gray-300 flex justify-between items-end">
+                          <div>
+                              <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Lokacija</p>
+                              <p class="text-base md:text-lg font-bold text-karcher-black">${item.lokacija}</p>
+                          </div>
+                          <div class="text-right">
+                              <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Zaloga</p>
+                              <span class="inline-block bg-karcher-yellow text-black px-3 py-1 rounded-lg text-xl md:text-2xl font-black shadow-sm">
+                                  ${item.zaloga}
+                              </span>
+                          </div>
+                      </div>
+                  </div>
+              `;
+          });
+          htmlStruktura += '</div>';
+        }
+        vsebina.innerHTML = htmlStruktura;
+      }
+
+      function zgradiDashboardCenik(podatki, skupnoStevilo) {
+        const vsebina = document.getElementById('dashboard-vsebina');
+        if (podatki.length === 0) { 
+          vsebina.innerHTML = '<p class="text-lg md:text-xl font-bold mt-10 text-center text-gray-500">Ni najdenih artiklov v ceniku za vpisane kriterije.</p>'; 
+          return; 
+        }
+
+        let prikazaniPodatki = podatki;
+        let opozoriloHtml = '';
+
+        if (podatki.length > 30) {
+          prikazaniPodatki = podatki.slice(0, 30);
+          opozoriloHtml = `
+            <div class="mb-4 p-3 bg-yellow-50 border-l-4 border-karcher-yellow rounded-xl flex items-center justify-between text-xs md:text-sm text-black font-bold shadow-sm">
+              <span>⚠️ Prikazanih je prvih 30 rezultatov od skupno ${podatki.length}. Prosimo, vpišite več informacij za natančnejši zadetek.</span>
+            </div>
+          `;
+        }
+
+        let htmlStruktura = opozoriloHtml;
+
+        if (layoutMode === 'TABLE') {
+          htmlStruktura += `
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+              <table class="excel-table">
+                <thead>
+                  <tr>
+                    <th>Šifra</th>
+                    <th>Model / Opis</th>
+                    <th>EAN</th>
+                    <th>VPC</th>
+                    <th>MPC</th>
+                    <th>MPC + DDV</th>
+                  </tr>
+                </thead>
+                <tbody>
+          `;
+          prikazaniPodatki.forEach(c => {
+            let vpcTxt = c.vpc !== '/' && c.vpc !== '' ? '€' + Number(c.vpc).toFixed(2) : '/';
+            let mpcTxt = c.mpc !== '/' && c.mpc !== '' ? '€' + Number(c.mpc).toFixed(2) : '/';
+            let mpcDdvTxt = c.mpc_ddv !== '/' && c.mpc_ddv !== '' ? '€' + Number(c.mpc_ddv).toFixed(2) : '/';
+
+            htmlStruktura += `
+              <tr>
+                <td class="font-mono text-xs font-bold">${c.artikel}</td>
+                <td class="font-bold">${c.model}</td>
+                <td class="font-mono text-xs font-bold text-gray-800">${c.ean}</td>
+                <td class="font-mono text-xs text-gray-700">${vpcTxt}</td>
+                <td class="font-mono text-xs text-gray-700">${mpcTxt}</td>
+                <td class="font-mono text-xs font-black text-black">${mpcDdvTxt}</td>
+              </tr>
+            `;
+          });
+          htmlStruktura += '</tbody></table></div>';
+        } else {
+          htmlStruktura += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 w-full content-start">';
+          prikazaniPodatki.forEach(c => {
+              let vpcTxt = c.vpc !== '/' && c.vpc !== '' ? '€' + Number(c.vpc).toFixed(2) : '/';
+              let mpcTxt = c.mpc !== '/' && c.mpc !== '' ? '€' + Number(c.mpc).toFixed(2) : '/';
+              let mpcDdvTxt = c.mpc_ddv !== '/' && c.mpc_ddv !== '' ? '€' + Number(c.mpc_ddv).toFixed(2) : '/';
+
+              htmlStruktura += `
+                  <div class="bg-gray-100 p-5 md:p-6 rounded-2xl shadow-md border-l-8 border-black hover:shadow-xl transition-all flex flex-col justify-between">
+                      <div>
+                          <div class="flex justify-between items-center mb-3">
+                              <span class="text-xs md:text-sm font-mono font-extrabold text-gray-800 tracking-wide">EAN: ${c.ean}</span>
+                              <span class="text-xs md:text-sm font-mono font-black text-black bg-karcher-yellow px-3 py-1 rounded-lg shadow-sm">${c.artikel}</span>
+                          </div>
+                          <h3 class="text-base md:text-xl font-black mb-4 text-karcher-black line-clamp-2 leading-tight">${c.model}</h3>
+                      </div>
+
+                      <div class="bg-white p-2 md:p-2.5 rounded-xl border border-gray-200 grid grid-cols-3 gap-1 text-center">
+                          <div>
+                              <p class="text-[8px] md:text-[9px] font-bold text-gray-400 uppercase tracking-wider">VPC</p>
+                              <p class="text-xs md:text-sm font-black text-gray-800">${vpcTxt}</p>
+                          </div>
+                          <div class="border-x border-gray-200">
+                              <p class="text-[8px] md:text-[9px] font-bold text-gray-400 uppercase tracking-wider">MPC</p>
+                              <p class="text-xs md:text-sm font-black text-gray-800">${mpcTxt}</p>
+                          </div>
+                          <div>
+                              <p class="text-[8px] md:text-[9px] font-bold text-gray-400 uppercase tracking-wider">MPC+DDV</p>
+                              <p class="text-xs md:text-sm font-black text-black">${mpcDdvTxt}</p>
+                          </div>
+                      </div>
+                  </div>
+              `;
+          });
+          htmlStruktura += '</div>';
+        }
+        vsebina.innerHTML = htmlStruktura;
+      }
+
+      function zgradiDashboardKupcev(podatki, skupnoStevilo) {
+        const vsebina = document.getElementById('dashboard-vsebina');
+        if (podatki.length === 0) { vsebina.innerHTML = '<p class="text-lg md:text-xl font-bold mt-10 text-center">Ni najdenih kupcev, ki bi ustrezali iskanju.</p>'; return; }
+
+        let htmlStruktura = '';
+
+        if (layoutMode === 'TABLE') {
+          htmlStruktura += `
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+              <table class="excel-table">
+                <thead>
+                  <tr>
+                    <th>Ime Podjetja</th>
+                    <th>Šifra Kupca</th>
+                    <th class="text-right">Akcija</th>
+                  </tr>
+                </thead>
+                <tbody>
+          `;
+          podatki.forEach(k => {
+            let safeIme = String(k.ime).replace(/'/g, "\\'");
+            let safeSifra = String(k.sifra).replace(/'/g, "\\'");
+            htmlStruktura += `
+              <tr onclick="odpriPodrobnostiKupca('${safeSifra}', '${safeIme}')" class="cursor-pointer">
+                <td class="font-bold">${k.ime}</td>
+                <td class="font-mono text-xs">${k.sifra}</td>
+                <td class="text-right text-gray-400">➔</td>
+              </tr>
+            `;
+          });
+          htmlStruktura += '</tbody></table></div>';
+        } else {
+          htmlStruktura += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 w-full content-start">';
+          podatki.forEach(k => {
+              let safeIme = String(k.ime).replace(/'/g, "\\'");
+              let safeSifra = String(k.sifra).replace(/'/g, "\\'");
+
+              htmlStruktura += `
+                  <div onclick="odpriPodrobnostiKupca('${safeSifra}', '${safeIme}')" 
+                       class="bg-gray-100 p-5 md:p-6 rounded-2xl shadow-md border-l-8 border-black hover:shadow-xl hover:bg-gray-200 transition-all flex flex-col cursor-pointer transform hover:-translate-y-1">
+                      <div class="mb-4 flex-grow">
+                          <h3 class="text-base md:text-xl font-bold mb-1 text-karcher-black line-clamp-2 leading-tight">${k.ime}</h3>
+                      </div>
+                      <div class="mt-auto pt-3 border-t border-gray-300 flex justify-between items-end">
+                          <div>
+                              <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Šifra podjetja</p>
+                              <p class="text-xs font-bold text-karcher-black font-mono">${k.sifra}</p>
+                          </div>
+                          <div class="text-right text-gray-400">
+                              <span class="text-lg md:text-xl">➔</span>
+                          </div>
+                      </div>
+                  </div>
+              `;
+          });
+          htmlStruktura += '</div>';
+        }
+        vsebina.innerHTML = htmlStruktura;
+      }
+
+      /* -----------------------------------------------------
+         HIBRIDNA LOGIKA NAROČIL (CACHE + UREJENA TABELA)
+      ------------------------------------------------------- */
+      window.narocilaPodatkiPripravljeni = []; 
+      window.trenutniNarociloStatus = ''; 
+      
+      function odpriPodrobnostiKupca(sifra, ime) {
+        trenutnoImeKupca = ime;
+        trenutnaSifraKupca = sifra;
+        window.trenutniNarociloStatus = ''; 
+
+        document.getElementById('orodna-vrstica').classList.add('hidden');
+        const vsebina = document.getElementById('dashboard-vsebina');
+        
+        vsebina.innerHTML = `
+            <div class="w-full flex flex-col h-full">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-6 mb-6 border-b-4 border-karcher-yellow pb-4 flex-shrink-0">
+                    <div class="flex items-center gap-4">
+                      <button onclick="naloziKupce()" class="px-5 py-2.5 bg-gray-100 hover:bg-black hover:text-white text-black font-bold rounded-xl transition-colors shadow-sm w-full md:w-auto text-sm">
+                          ← Nazaj na seznam
+                      </button>
+                      <div>
+                          <h2 class="text-xl md:text-2xl font-bold text-karcher-black">${ime}</h2>
+                          <p class="text-gray-500 font-mono text-xs mt-0.5">Šifra kupca: ${sifra}</p>
+                      </div>
+                    </div>
+                </div>
+
+                <div id="narocila-kontejner" class="flex flex-col items-center justify-center flex-grow py-12">
+                    <div class="h-10 w-10 bg-karcher-yellow rounded-full mb-3 animate-bounce"></div>
+                    <p class="text-lg md:text-2xl font-bold opacity-75">Nalagam naročila...</p>
+                </div>
+            </div>
+        `;
+
+        let cistaSifra = String(sifra).trim();
+        if (cistaSifra.endsWith(".0")) cistaSifra = cistaSifra.substring(0, cistaSifra.length - 2);
+
+        if (window.kesiranaNarocilaKupcev[cistaSifra]) {
+            trenutnaNarocilaPoStavkah = window.kesiranaNarocilaKupcev[cistaSifra];
+            pripraviNarocilaZaPrikaz();
+        } else {
+            if (typeof google !== 'undefined' && google.script) {
+                google.script.run
+                    .withSuccessHandler(function(narocila) {
+                        trenutnaNarocilaPoStavkah = narocila || [];
+                        window.kesiranaNarocilaKupcev[cistaSifra] = trenutnaNarocilaPoStavkah;
+                        pripraviNarocilaZaPrikaz();
+                    })
+                    .pridobiNarocilaZaKupca(sifra);
+            }
+        }
+      }
+
+      function pripraviNarocilaZaPrikaz() {
+        const kontejner = document.getElementById('narocila-kontejner');
+        
+        if (!trenutnaNarocilaPoStavkah || trenutnaNarocilaPoStavkah.length === 0) {
+            kontejner.innerHTML = `
+                <div class="bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 p-10 flex flex-col items-center justify-center text-gray-400 w-full text-center">
+                    <p class="text-lg font-bold text-karcher-black">Za izbranega kupca ni najdenih naročil.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const narocilaGrupno = {};
+        trenutnaNarocilaPoStavkah.forEach(n => {
+            let poNum = n['PO NUMBER'] || n['PO Number'] || 'Brez številke';
+            if (!narocilaGrupno[poNum]) {
+                narocilaGrupno[poNum] = [];
+            }
+            narocilaGrupno[poNum].push(n);
+        });
+
+        window.narocilaPodatkiPripravljeni = [];
+
+        Object.keys(narocilaGrupno).forEach(poNumber => {
+            let postavke = narocilaGrupno[poNumber];
+            let vsiStatusi = postavke.map(p => String(p['STATUS'] || p['Status'] || p['STAT'] || '').trim().toUpperCase());
+            
+            let skupniStatus = 'A';
+            if (vsiStatusi.every(s => s === 'C')) {
+                skupniStatus = 'C';
+            } else if (vsiStatusi.some(s => s === 'B' || s === 'C')) {
+                skupniStatus = 'B';
+            }
+
+            let prva = postavke[0];
+            let rawDatum = prva['PO DATE'] || prva['PO Date'] || '1970-01-01';
+
+            window.narocilaPodatkiPripravljeni.push({
+                poNumber: poNumber,
+                postavke: postavke,
+                skupniStatus: skupniStatus,
+                rawDatum: String(rawDatum)
+            });
+        });
+
+        const prioritetaStatusa = { 'B': 1, 'A': 2, 'C': 3 };
+        
+        window.narocilaPodatkiPripravljeni.sort((a, b) => {
+            let pA = prioritetaStatusa[a.skupniStatus] || 2;
+            let pB = prioritetaStatusa[b.skupniStatus] || 2;
+            
+            if (pA !== pB) {
+                return pA - pB;
+            }
+            return b.rawDatum.localeCompare(a.rawDatum);
+        });
+
+        let htmlGumbi = `
+            <div class="w-full mb-6">
+                <input type="text" id="narociloSearchInput" oninput="filtrirajInRenderNarocila()" placeholder="Išči po številki naročila ali št. dokumenta (npr. 2204...)..." 
+                       class="w-full bg-gray-100 text-karcher-black placeholder-gray-500 font-bold text-sm md:text-base py-3 px-4 rounded-xl border-2 border-transparent focus:border-karcher-yellow focus:bg-white focus:outline-none transition-all shadow-sm">
+            </div>
+            <div class="flex flex-wrap gap-2 md:gap-4 mb-6 w-full justify-center border-b-2 border-gray-200 pb-4">
+                <button onclick="nastaviStatusNarocil('B', this)" class="narocilo-filter-btn px-6 py-3 bg-gray-200 text-black hover:bg-yellow-200 font-bold rounded-xl shadow-sm transition-colors text-sm">V Obdelavi</button>
+                <button onclick="nastaviStatusNarocil('A', this)" class="narocilo-filter-btn px-6 py-3 bg-gray-200 text-black hover:bg-red-200 font-bold rounded-xl shadow-sm transition-colors text-sm">Ne Obdelano</button>
+                <button onclick="nastaviStatusNarocil('C', this)" class="narocilo-filter-btn px-6 py-3 bg-gray-200 text-black hover:bg-green-200 font-bold rounded-xl shadow-sm transition-colors text-sm">Odpremljeno</button>
+                <button onclick="nastaviStatusNarocil('', null)" class="px-4 py-3 bg-white text-gray-500 hover:bg-gray-100 border border-gray-300 font-bold rounded-xl shadow-sm transition-colors text-sm flex items-center gap-1">✕ Odstrani</button>
+            </div>
+            <div id="narocila-grid-container" class="w-full text-center py-10 text-gray-400 font-bold text-lg">
+                👆 Izberite status zgoraj ali pa uporabite iskalnik za prikaz naročil.
+            </div>
+        `;
+        
+        kontejner.className = "flex flex-col items-center justify-start w-full";
+        kontejner.innerHTML = htmlGumbi;
+
+        filtrirajInRenderNarocila();
+      }
+
+      window.nastaviStatusNarocil = function(iskanStatus, btnElement) {
+        if (window.trenutniNarociloStatus === iskanStatus && iskanStatus !== '') {
+            iskanStatus = '';
+        }
+        window.trenutniNarociloStatus = iskanStatus;
+
+        document.querySelectorAll('.narocilo-filter-btn').forEach(b => {
+             b.classList.remove('bg-black', 'text-karcher-yellow');
+             b.classList.add('bg-gray-200', 'text-black');
+        });
+
+        if (iskanStatus !== '' && btnElement && btnElement.classList.contains('narocilo-filter-btn')) {
+            btnElement.classList.remove('bg-gray-200', 'text-black');
+            btnElement.classList.add('bg-black', 'text-karcher-yellow');
+        }
+
+        filtrirajInRenderNarocila();
+      }
+
+      window.filtrirajInRenderNarocila = function() {
+        const inputElem = document.getElementById('narociloSearchInput');
+        const iskalniNiz = inputElem ? inputElem.value.trim().toLowerCase() : '';
+        const container = document.getElementById('narocila-grid-container');
+
+        if (!container) return;
+
+        let filtriranaNarocila = window.narocilaPodatkiPripravljeni;
+
+        if (window.trenutniNarociloStatus !== '') {
+            filtriranaNarocila = filtriranaNarocila.filter(n => n.skupniStatus === window.trenutniNarociloStatus);
+        }
+
+        if (iskalniNiz !== '') {
+            filtriranaNarocila = filtriranaNarocila.filter(n => {
+                let kodaNarocila = String(n.poNumber).toLowerCase();
+                let stDokumenta = String(n.postavke[0]['SISDOC DIRECT'] || n.postavke[0]['SISDOC Direct'] || '').toLowerCase();
+                return kodaNarocila.includes(iskalniNiz) || stDokumenta.includes(iskalniNiz);
+            });
+        }
+
+        if (filtriranaNarocila.length === 0) {
+            container.innerHTML = `<p class="py-10 text-gray-500 font-bold">Ni naročil, ki bi ustrezala izbranim kriterijem.</p>`;
+            return;
+        }
+
+        let htmlStruktura = '';
+
+        if (layoutMode === 'TABLE') {
+          htmlStruktura += `
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm w-full">
+              <table class="excel-table">
+                <thead>
+                  <tr>
+                    <th>Št. Naročila</th>
+                    <th>Št. Dokumenta</th>
+                    <th>Datum Naročila</th>
+                    <th>Status</th>
+                    <th>Postavke</th>
+                    <th class="text-right">Akcija</th>
+                  </tr>
+                </thead>
+                <tbody>
+          `;
+          filtriranaNarocila.forEach(n => {
+            let prva = n.postavke[0];
+            let narocenoDatum = formatirajDatum(prva['PO DATE'] || prva['PO Date'] || '/');
+            let stDokumenta = prva['SISDOC DIRECT'] || prva['SISDOC Direct'] || '/';
+            let safePoNumber = String(n.poNumber).replace(/'/g, "\\'");
+
+            let statusTekst = 'Ne Obdelano';
+            let statusBarva = 'bg-red-100 text-red-800';
+            if (n.skupniStatus === 'B') { statusTekst = 'V Obdelavi'; statusBarva = 'bg-yellow-100 text-yellow-800'; }
+            else if (n.skupniStatus === 'C') { statusTekst = 'Odpremljeno'; statusBarva = 'bg-green-100 text-green-800'; }
+
+            htmlStruktura += `
+              <tr onclick="odpriPodrobnostiNarocila('${safePoNumber}')" class="cursor-pointer">
+                <td class="font-bold">${n.poNumber}</td>
+                <td class="font-mono text-xs">${stDokumenta}</td>
+                <td class="font-mono text-xs">${narocenoDatum}</td>
+                <td><span class="px-2 py-0.5 text-xs font-black rounded ${statusBarva}">${statusTekst}</span></td>
+                <td>${n.postavke.length}</td>
+                <td class="text-right text-gray-400">➔</td>
+              </tr>
+            `;
+          });
+          htmlStruktura += '</tbody></table></div>';
+        } else {
+          htmlStruktura += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 w-full text-left content-start">';
+          filtriranaNarocila.forEach(n => {
+              let prva = n.postavke[0];
+              let narocenoDatum = formatirajDatum(prva['PO DATE'] || prva['PO Date'] || '/');
+              let stDokumenta = prva['SISDOC DIRECT'] || prva['SISDOC Direct'] || '/';
+              let safePoNumber = String(n.poNumber).replace(/'/g, "\\'");
+
+              let statusTekst = 'Ne Obdelano';
+              let statusBarva = 'bg-red-100 text-red-800 border-red-300';
+              if (n.skupniStatus === 'B') {
+                  statusTekst = 'V Obdelavi';
+                  statusBarva = 'bg-yellow-100 text-yellow-800 border-yellow-400';
+              } else if (n.skupniStatus === 'C') {
+                  statusTekst = 'Odpremljeno';
+                  statusBarva = 'bg-green-100 text-green-800 border-green-400';
+              }
+
+              htmlStruktura += `
+                  <div onclick="odpriPodrobnostiNarocila('${safePoNumber}')" 
+                       class="bg-gray-100 p-5 md:p-6 rounded-2xl shadow-md border-t-8 border-karcher-black hover:shadow-xl transition-all cursor-pointer transform hover:-translate-y-1 flex flex-col justify-between">
+                      <div>
+                          <div class="flex justify-between items-center mb-4">
+                              <span class="px-3 py-1 text-xs font-black rounded-full border ${statusBarva}">
+                                  Status: ${statusTekst}
+                              </span>
+                              <span class="text-xs font-mono font-bold text-gray-500">Datum naročila: ${narocenoDatum}</span>
+                          </div>
+                          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Številka Naročila</p>
+                          <h3 class="text-xl md:text-2xl font-black text-karcher-black mb-4 break-all">${n.poNumber}</h3>
+                          <div class="bg-white p-3 rounded-xl border border-gray-200 mb-4 text-xs">
+                              <p class="text-gray-400 uppercase font-bold text-[9px]">Št. Dokumenta</p>
+                              <p class="font-bold text-karcher-black font-mono text-xs md:text-sm break-all">${stDokumenta}</p>
+                          </div>
+                      </div>
+                      <div class="pt-3 border-t border-gray-300 flex justify-between items-center mt-2">
+                          <span class="text-xs md:text-sm font-bold text-gray-600">Postavke: <strong class="text-black">${n.postavke.length}</strong></span>
+                          <span class="px-4 py-2 bg-black text-karcher-yellow font-bold text-xs rounded-xl shadow-sm">
+                              Prikaži artikle ➔
+                          </span>
+                      </div>
+                  </div>
+              `;
+          });
+          htmlStruktura += '</div>';
+        }
+        container.innerHTML = htmlStruktura;
+      }
+
+      /* -----------------------------------------------------
+         LOGIKA ZA PRIKAZ ARTIKLOV ZNOTRAJ NAROČIL (BREZ CEN)
+      ------------------------------------------------------- */
+      window.trenutniArtikliNarocila = [];
+      window.trenutniArtikelStatus = ''; 
+
+      function odpriPodrobnostiNarocila(poNumber) {
+        trenutnoPoNumber = poNumber;
+        const vsebina = document.getElementById('dashboard-vsebina');
+        
+        window.trenutniArtikliNarocila = trenutnaNarocilaPoStavkah.filter(n => {
+            let p = n['PO NUMBER'] || n['PO Number'] || 'Brez številke';
+            return String(p) === String(poNumber);
+        });
+
+        const prioritetaStatusa = { 'B': 1, 'A': 2, 'C': 3 };
+        window.trenutniArtikliNarocila.sort((a, b) => {
+            let sA = String(a['STATUS'] || a['Status'] || a['STAT'] || 'A').trim().toUpperCase();
+            let sB = String(b['STATUS'] || b['Status'] || b['STAT'] || 'A').trim().toUpperCase();
+            
+            let pA = prioritetaStatusa[sA] || 2;
+            let pB = prioritetaStatusa[sB] || 2;
+
+            if (pA !== pB) return pA - pB;
+
+            let dA = String(a['DELIVERY DATE'] || a['Delivery Date'] || '1970-01-01');
+            let dB = String(b['DELIVERY DATE'] || b['Delivery Date'] || '1970-01-01');
+            return dB.localeCompare(dA);
+        });
+
+        let imaA = false, imaB = false, imaC = false;
+        window.trenutniArtikliNarocila.forEach(a => {
+            let rawStatus = String(a['STATUS'] || a['Status'] || a['STAT'] || '').trim().toUpperCase();
+            if (rawStatus === 'B') imaB = true;
+            else if (rawStatus === 'C') imaC = true;
+            else imaA = true;
+        });
+
+        window.trenutniArtikelStatus = 'ALL';
+
+        let htmlHeader = `
+            <div class="w-full flex flex-col h-full">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-6 mb-6 border-b-4 border-karcher-yellow pb-4">
+                    <div class="flex items-center gap-4">
+                      <button onclick="odpriPodrobnostiKupca('${trenutnaSifraKupca}', '${trenutnoImeKupca}')" 
+                              class="px-5 py-2.5 bg-gray-100 hover:bg-black hover:text-white text-black font-bold rounded-xl transition-colors shadow-sm w-full md:w-auto text-sm">
+                          ← Nazaj na naročila
+                      </button>
+                      <div>
+                          <h2 class="text-xl md:text-2xl font-bold text-karcher-black">Naročilo: ${poNumber}</h2>
+                          <p class="text-gray-500 text-xs mt-0.5">Kupec: <strong>${trenutnoImeKupca}</strong> (${trenutnaSifraKupca})</p>
+                      </div>
+                    </div>
+                </div>
+
+                <div class="w-full mb-6">
+                    <input type="text" id="artikelSearchInput" oninput="filtrirajArtikleZnotrajNarocila()" placeholder="Išči artikel po imenu ali šifri (npr. 2.889-196.0)..." 
+                           class="w-full bg-gray-100 text-karcher-black placeholder-gray-500 font-bold text-sm md:text-base py-3 px-4 rounded-xl border-2 border-transparent focus:border-karcher-yellow focus:bg-white focus:outline-none transition-all shadow-sm">
+                </div>
+        `;
+
+        let htmlFiltri = '';
+        if (imaA || imaB || imaC) {
+            htmlFiltri = `
+                <div id="status-gumbi-wrapper" class="flex flex-wrap gap-2 md:gap-4 mb-6 w-full justify-center border-b-2 border-gray-200 pb-4">
+                    ${imaB ? `<button onclick="nastaviStatusArtiklov('B', this)" class="artikel-filter-btn px-6 py-3 bg-gray-200 text-black hover:bg-yellow-200 font-bold rounded-xl shadow-sm transition-colors text-sm">V Obdelavi</button>` : ''}
+                    ${imaA ? `<button onclick="nastaviStatusArtiklov('A', this)" class="artikel-filter-btn px-6 py-3 bg-gray-200 text-black hover:bg-red-200 font-bold rounded-xl shadow-sm transition-colors text-sm">Ne Obdelano</button>` : ''}
+                    ${imaC ? `<button onclick="nastaviStatusArtiklov('C', this)" class="artikel-filter-btn px-6 py-3 bg-gray-200 text-black hover:bg-green-200 font-bold rounded-xl shadow-sm transition-colors text-sm">Odpremljeno</button>` : ''}
+                    <button onclick="nastaviStatusArtiklov('', null)" class="px-4 py-3 bg-white text-gray-500 hover:bg-gray-100 border border-gray-300 font-bold rounded-xl shadow-sm transition-colors text-sm flex items-center gap-1">✕ Odstrani</button>
+                </div>
+            `;
+        }
+
+        let htmlContainer = `<div id="artikli-grid-container" class="w-full"></div></div>`;
+        vsebina.innerHTML = htmlHeader + htmlFiltri + htmlContainer;
+
+        filtrirajArtikleZnotrajNarocila();
+      }
+
+      window.nastaviStatusArtiklov = function(status, btnElement) {
+        if (window.trenutniArtikelStatus === status && status !== '') {
+            status = '';
+        }
+        window.trenutniArtikelStatus = status;
+        
+        document.querySelectorAll('.artikel-filter-btn').forEach(b => {
+             b.classList.remove('bg-black', 'text-karcher-yellow');
+             b.classList.add('bg-gray-200', 'text-black');
+        });
+
+        if (status !== '' && btnElement && btnElement.classList.contains('artikel-filter-btn')) {
+            btnElement.classList.remove('bg-gray-200', 'text-black');
+            btnElement.classList.add('bg-black', 'text-karcher-yellow');
+        }
+        
+        filtrirajArtikleZnotrajNarocila();
+      }
+
+      window.filtrirajArtikleZnotrajNarocila = function() {
+        const inputElem = document.getElementById('artikelSearchInput');
+        const rawIskalniNiz = inputElem ? inputElem.value.trim().toLowerCase() : '';
+        const cistiIskalniNiz = rawIskalniNiz.replace(/[\.\-\s]/g, '');
+        const container = document.getElementById('artikli-grid-container');
+
+        if (!container) return;
+
+        let filtrirani = window.trenutniArtikliNarocila;
+
+        if (window.trenutniArtikelStatus !== 'ALL' && window.trenutniArtikelStatus !== '') {
+             filtrirani = filtrirani.filter(a => {
+                  let rawStatus = String(a['STATUS'] || a['Status'] || a['STAT'] || '').trim().toUpperCase();
+                  if(rawStatus === '') rawStatus = 'A';
+                  return rawStatus === window.trenutniArtikelStatus;
+             });
+        }
+
+        if (rawIskalniNiz !== '') {
+             filtrirani = filtrirani.filter(a => {
+                  let koda = String(a['MATERIAL'] || a['Material'] || '').toLowerCase();
+                  let naziv = String(a['DESCRIPTION'] || a['Description'] || '').toLowerCase();
+                  
+                  let polnoBesedilo = koda + ' ' + naziv;
+                  let cistoBesedilo = polnoBesedilo.replace(/[\.\-\s]/g, '');
+
+                  return polnoBesedilo.includes(rawIskalniNiz) || cistoBesedilo.includes(cistiIskalniNiz);
+             });
+        }
+
+        if (filtrirani.length === 0) {
+             container.innerHTML = `<div class="text-center py-10 text-gray-500 font-bold text-lg">Ni najdenih artiklov za iskalne kriterije.</div>`;
+             return;
+        }
+
+        if (layoutMode === 'TABLE') {
+          let tableHtml = `
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm w-full">
+              <table class="excel-table">
+                <thead>
+                  <tr>
+                    <th>Naziv Artikla</th>
+                    <th>Šifra</th>
+                    <th>Datum Odpreme</th>
+                    <th>Status</th>
+                    <th class="text-right">Količina</th>
+                  </tr>
+                </thead>
+                <tbody>
+          `;
+          filtrirani.forEach(n => {
+            let materialKoda = n['MATERIAL'] || n['Material'] || '/';
+            let nazivArtikla = n['DESCRIPTION'] || n['Description'] || 'Brez opisa';
+            let stArtiklov = n['CONFIRMED'] || n['Confirmed'] || '0';
+            let predvidenDatum = formatirajDatum(n['DELIVERY DATE'] || n['Delivery Date'] || '/');
+            let rawStatus = String(n['STATUS'] || n['Status'] || n['STAT'] || '').trim().toUpperCase();
+
+            let statusTekst = 'Ne Obdelano';
+            let statusBarva = 'bg-red-100 text-red-800';
+            if (rawStatus === 'B') { statusTekst = 'V Obdelavi'; statusBarva = 'bg-yellow-100 text-yellow-800'; }
+            else if (rawStatus === 'C') { statusTekst = 'Odpremljeno'; statusBarva = 'bg-green-100 text-green-800'; }
+
+            tableHtml += `
+              <tr>
+                <td class="font-bold">${nazivArtikla}</td>
+                <td class="font-mono text-xs">${materialKoda}</td>
+                <td class="font-mono text-xs">${predvidenDatum}</td>
+                <td><span class="px-2 py-0.5 text-xs font-black rounded ${statusBarva}">${statusTekst}</span></td>
+                <td class="text-right"><span class="bg-karcher-yellow text-black font-black px-2 py-0.5 rounded">${stArtiklov}x</span></td>
+              </tr>
+            `;
+          });
+          tableHtml += '</tbody></table></div>';
+          container.innerHTML = tableHtml;
+        } else {
+          container.innerHTML = '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 w-full text-left content-start">' + zgradiHTMLzaArtikle(filtrirani) + '</div>';
+        }
+      }
+
+      function zgradiHTMLzaArtikle(artikliList) {
+        let html = '';
+        artikliList.forEach(n => {
+            let materialKoda = n['MATERIAL'] || n['Material'] || '/';
+            let nazivArtikla = n['DESCRIPTION'] || n['Description'] || 'Brez opisa';
+            let stArtiklov = n['CONFIRMED'] || n['Confirmed'] || '0';
+            let predvidenDatum = formatirajDatum(n['DELIVERY DATE'] || n['Delivery Date'] || '/');
+            let rawStatus = String(n['STATUS'] || n['Status'] || n['STAT'] || '').trim().toUpperCase();
+
+            let statusTekst = 'Ne Obdelano';
+            let statusBarva = 'bg-red-100 text-red-800 border-red-300';
+            if (rawStatus === 'B') {
+                statusTekst = 'V Obdelavi';
+                statusBarva = 'bg-yellow-100 text-yellow-800 border-yellow-400';
+            } else if (rawStatus === 'C') {
+                statusTekst = 'Odpremljeno';
+                statusBarva = 'bg-green-100 text-green-800 border-green-400';
+            }
+
+            html += `
+                <div class="bg-gray-100 p-5 md:p-6 rounded-2xl shadow-md border-l-8 border-karcher-yellow flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="px-3 py-1 text-xs font-black rounded-full border ${statusBarva}">
+                                Status: ${statusTekst}
+                            </span>
+                            <span class="text-xs font-mono font-bold text-gray-500">Šifra: ${materialKoda}</span>
+                        </div>
+                        <h3 class="text-base md:text-lg font-black text-karcher-black mb-4 line-clamp-2 leading-snug" title="${nazivArtikla}">
+                            ${nazivArtikla}
+                        </h3>
+                    </div>
+
+                    <div class="pt-3 border-t border-gray-300 flex justify-between items-center mt-2">
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Datum Odpreme</p>
+                            <p class="text-xs md:text-sm font-bold text-karcher-black">${predvidenDatum}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Količina</p>
+                            <span class="inline-block bg-karcher-yellow text-black px-3 py-1 rounded-xl text-xl md:text-2xl font-black shadow-sm">
+                                ${stArtiklov}x
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        return html;
+      }
+    </script>
+  </body>
+</html>
