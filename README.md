@@ -4,6 +4,8 @@ An end-to-end automation and data visualization solution that extracts real-time
 
 Developed to streamline warehouse operations, improve data transparency, and eliminate manual reporting.
 
+> **Note:** This was an internal tool deployed behind the company's Google Workspace. No public demo is available — the repository contains the full code and architecture documentation.
+
 ## Impact
 
 - Replaced ~20 recurring IT tickets per day of manual SAP data pulls with a self-serve dashboard
