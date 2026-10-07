@@ -1,58 +1,74 @@
-SAP to Google Sheets Automated InfoBoard System
-An end to end automation and data visualization solution that extracts real time business data like Inventory, Customers, Delivery Status, and Price Lists from SAP GUI via Python, syncs it to a Google Sheets backend, and presents it through an interactive responsive Web Dashboard built with Google Apps Script and Tailwind CSS.
+# SAP → Google Sheets Automated InfoBoard System
 
-Developed independently to streamline business operations, improve data transparency, and reduce manual reporting efforts.
+An end-to-end automation and data visualization solution that extracts real-time business data — inventory, customers, delivery status, and price lists — from SAP GUI via Python, syncs it to a Google Sheets backend, and presents it through an interactive, responsive web dashboard built with Google Apps Script and Tailwind CSS.
 
-Key Features
-Backend Automation Python and SAP GUI
-Automated SAP Extraction: Uses win32com client to interface directly with SAP GUI scripting engines MM60, MB52, ZDE1SD131, and ZWWXSD138.
+Developed to streamline warehouse operations, improve data transparency, and eliminate manual reporting.
 
-Web Scraping Integration: Automated XML data retrieval from Serv U WebClient using Selenium.
+## Impact
 
-Data Processing and Normalization: Employs Pandas to clean, format, merge, and structure raw SAP and XML exports.
+- Replaced ~20 recurring IT tickets per day of manual SAP data pulls with a self-serve dashboard
+- Eliminated repetitive export work for warehouse staff
+- Surfaced pipeline failures end-to-end: SAP error → email alert → visible warning on the dashboard
 
-Cloud Synchronization: Uses gspread and Google Service Accounts to push clean datasets to Google Sheets in real time.
+## Key Features
 
-Orchestration and Error Handling: Includes a Master Runner script that sequentially executes data pipelines, logs errors, and updates system flags.
+### Backend Automation (Python + SAP GUI)
 
-Frontend Interface Google Apps Script and Web Tech
-Custom Web Dashboard: Built with HTML, JavaScript, and styled with Tailwind CSS.
+- **Automated SAP Extraction** — Uses `win32com.client` to interface directly with SAP GUI scripting engines (transactions MM60, MB52, ZDE1SD131, ZWWXSD138).
+- **Web Scraping Integration** — Automated XML data retrieval from Serv-U WebClient using Selenium.
+- **Data Processing & Normalization** — Employs Pandas to clean, format, merge, and structure raw SAP and XML exports.
+- **Cloud Synchronization** — Pushes cleaned datasets to Google Sheets in real time via `gspread` and Google Service Accounts.
+- **Orchestration & Error Handling** — A Master Runner script sequentially executes pipelines, logs per-script status, and updates system flags. One failing export does not stop the others.
 
-Multi Module Navigation: Home offers a quick launcher with a clean card layout. Customers provides a searchable business database with detailed order breakdowns. Stock offers live stock levels categorized by location with integrated price lookup. Price List allows interactive article search optimized with a 30 item render cap for instant performance.
+### Frontend Interface (Google Apps Script + Web)
 
-Order and Delivery Tracker: Real time tracking of orders grouped by Purchase Order, filtered by delivery status like Pending, In Processing, and Shipped.
+- **Custom Web Dashboard** — Built with HTML, JavaScript, and Tailwind CSS.
+- **Multi-Module Navigation** — Home launcher with card layout; Customers searchable business database with order breakdowns; Stock with live levels by location and integrated price lookup; Price List with a 30-item render cap for instant performance.
+- **Order & Delivery Tracker** — Real-time tracking of orders grouped by Purchase Order, filtered by delivery status (Pending, In Processing, Shipped).
+- **Responsive Layouts** — Dynamic view switching between Grid Cards and Excel-like Table View.
 
-Responsive Layouts: Supports dynamic view switching between Grid Cards and an Excel like Table View.
+## Tech Stack
 
-Tech Stack
-Automation and Scripting: Python 3, win32com client for SAP GUI Scripting, and Selenium
+- **Automation & Scripting** — Python 3, `win32com.client` (SAP GUI Scripting), Selenium
+- **Data Manipulation** — pandas, openpyxl, `xml.etree.ElementTree`
+- **Cloud & API Integration** — Google Sheets API, gspread, Google Apps Script
+- **Frontend** — HTML5, JavaScript (ES6+), Tailwind CSS
 
-Data Manipulation: pandas, openpyxl, and xml etree ElementTree
+## Repository Structure
 
-Cloud and API Integration: Google Sheets API, gspread, and Google Apps Script
+```
+BackEndConnection/
+  Code.gs                  Google Apps Script server engine & API handlers
 
-Frontend Web App: HTML5, JavaScript ES6 plus, and Tailwind CSS
+FrontEndPage/
+  index.html               Responsive frontend web interface
 
-Repository Structure
-BackEndConnection
-Code gs: Google Apps Script Server Engine and API Handlers
+Python SAP Extraction Scripts/
+  Izvoz_Artiklov.py        SAP MM60 exporter
+  Izvoz_Delivery_Daily.py  SAP orders exporter (today − 60 days)
+  Izvoz_Delivery_Monthly.py SAP orders exporter (today − start of month)
+  Izvoz_Kupcev.py          SAP ZWWXSD138 customer exporter
+  Izvoz_XML_Data.py        Serv-U WebClient XML exporter
+  Izvoz_Zaloge.py          SAP MB52 local stock exporter
+  Master_Script.py         Main orchestration & Google Sheets sync
 
-FrontEndPage
-index html: Responsive Frontend Web Interface
+README.md                  Project documentation
+```
 
-Python SAP Extraction Scripts
-Izvoz Artiklov py: SAP MM60 Exporter
-Izvoz Delivery Daily py: SAP Orders Exporter for Today minus 60 days
-Izvoz Delivery Monthly py: SAP Orders Exporter for Today minus Start of Month
-Izvoz Kupcev py: SAP ZWWXSD138 Customer Exporter
-Izvoz XML Data py: Serv U WebClient XML Exporter
-Izvoz Zaloge py: SAP MB52 Local Stock Exporter
-Master Script py: Main Orchestration and Google Sheets Sync
+## Known Limitations
 
-README md: Project Documentation
+- SAP GUI COM scripting requires an active GUI session — the pipeline runs on a dedicated Windows workstation.
+- `time.sleep()` waits are used between SAP steps because the COM interface has no reliable "wait for element" primitive.
+- A yearly full-rebuild script (to catch deletions outside the daily window) was designed and partially implemented but not fully rolled out before the project was cut.
 
-Security and Privacy
-All sensitive company data, API credentials, Google Sheet IDs, internal server paths, and employee identifiers have been completely scrubbed and replaced with generic environment placeholders like YOUR SPREADSHEET ID or YOUR USERNAME to comply with security standards.
+## Security & Privacy
 
-Independent Project Statement
-This project was conceived, architected, and fully implemented by me as an independent automation solution to replace manual reporting workflows with an automated cloud based data dashboard.
+All sensitive company data, API credentials, Google Sheet IDs, internal server paths, and employee identifiers have been scrubbed and replaced with generic environment placeholders (e.g. `YOUR_SPREADSHEET_ID`, `YOUR_USERNAME`).
+
+Credentials are loaded from environment variables — see `.env.example`. Never commit real credentials.
+
+## Independent Project Statement
+
+This project was conceived and architected by me, and implemented independently as an automation solution to replace manual reporting workflows with a cloud-based data dashboard. AI assistance was used for implementation details; the system design, architecture, and debugging are my own.
+
+The project was cut short by company budget, so some planned improvements remain partially wired.
